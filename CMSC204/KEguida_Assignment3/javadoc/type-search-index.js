@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes and Interfaces","u":"allclasses-index.html"},{"p":"<Unnamed>","l":"BasicDoubleLinkedList"},{"p":"<Unnamed>","l":"BasicDoubleLinkedList.DoubleLinkedListIterator"},{"p":"<Unnamed>","l":"BasicDoubleLinkedList.Node"},{"p":"<Unnamed>","l":"SortedDoubleLinkedList"}];updateSearchResults();

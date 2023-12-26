@@ -1,0 +1,163 @@
+   .data
+str1:
+   .asciiz "abba"
+str2:
+   .asciiz "racecar"
+str3:
+   .asciiz "swap paws",
+str4:
+   .asciiz "not a palindrome"
+str5:
+   .asciiz "another non palindrome"
+str6:
+   .asciiz "almost but tsomla"
+
+# array of char pointers = {&str1, &str2, ..., &str6}
+ptr_arr:
+   .word str1, str2, str3, str4, str5, str6, 0
+
+yes_str:
+   .asciiz " --> Y\n"
+no_str:
+   .asciiz " --> N\n"
+
+   .text
+
+# main(): ##################################################
+#   char ** j = ptr_arr
+#   while (*j != 0):
+#     rval = is_palindrome(*j)
+#     printf("%s --> %c\n", *j, rval ? yes_str: no_str)
+#     j++
+#
+main:
+   li   $sp, 0x7ffffffc    # initialize $sp
+
+   # PROLOGUE
+   subu $sp, $sp, 8        # expand stack by 8 bytes
+   sw   $ra, 8($sp)        # push $ra (ret addr, 4 bytes)
+   sw   $fp, 4($sp)        # push $fp (4 bytes)
+   addu $fp, $sp, 8        # set $fp to saved $ra
+
+   subu $sp, $sp, 8        # save s0, s1 on stack before using them
+   sw   $s0, 8($sp)        # push $s0
+   sw   $s1, 4($sp)        # push $s1
+
+   la   $s0, ptr_arr        # use s0 for j. init ptr_arr
+main_while:
+   lw   $s1, ($s0)         # use s1 for *j
+   beqz $s1, main_end      # while (*j != 0):
+   move $a0, $s1           #    print_str(*j)
+   li   $v0, 4
+   syscall
+   move $a0, $s1           #    v0 = is_palindrome(*j)
+   jal  is_palindrome
+   beqz $v0, main_print_no #    if v0 != 0:
+   la   $a0, yes_str       #       print_str(yes_str)
+   b    main_print_resp
+main_print_no:             #    else:
+   la   $a0, no_str        #       print_str(no_str)
+main_print_resp:
+   li   $v0, 4
+   syscall
+
+   addu $s0, $s0, 4       #     j++
+   b    main_while        # end while
+main_end:
+
+   # EPILOGUE
+   move $sp, $fp           # restore $sp
+   lw   $ra, ($fp)         # restore saved $ra
+   lw   $fp, -4($sp)       # restore saved $fp
+   j    $ra                # return to kernel
+# end main ################################################
+is_palindrome:
+
+    # PROLOGUE
+    subu    $sp,        $sp,        8   # expand stack by 8 bytes
+    sw      $ra,        8($sp)          # push $ra (ret addr, 4 bytes)
+    sw      $fp,        4($sp)          # push $fp (4 bytes)
+    addu    $fp,        $sp,        8   # set $fp to saved $ra
+
+    # save $s1 and $s2 on stack before using them
+    subu    $sp,        $sp,        8   # expand stack by 8 bytes
+    sw      $s2,        8($sp)          # save $s2 on stack
+    sw      $s1,        4($sp)          # save $s1 on stack
+    
+    jal strlen                          # v0 = strlen(a0), a0 is a pointer to the first charcter of the string
+
+    li      $s1,        0               # use s1 for i, we stwrt the looop at i = 0
+    move    $t0,        $v0             # t0 = strlen(a0)
+    div     $t0,        $t0,        2   # t0 = strlen(a0) / 2
+    addu    $s2,        $a0,        $t0 # s2 = a0[t0]
+    subu    $s2,        $s2,        1   # s2 = a0[t0 - 1]
+    
+is_palindrome_loop:
+    
+    beq     $s1,        $t0,        is_palindrome_ret1 # if i == strlen(a0) / 2, stop the loop and return 1
+    bne    $a0,        $s2,        is_palindrome_ret0 # if a0[i] != a0[t0 - 1 - i] return 0
+    
+    # increment i
+    addu    $a0,        $a0,        1   # a0[i++]
+    subu    $s2,        $s2,        1   # a0[t0 - 1 - (i++)]
+    
+    j       is_palindrome_loop
+    
+is_palindrome_ret0:
+
+    li      $v0,        0               # rval = 0
+    j       is_palindrome_end
+    
+is_palindrome_ret1:
+
+    li      $v0,        1               # rval = 1
+ 
+is_palindrome_end:
+
+    #restores the args
+    lw      $s1,        4($sp)          # push $s1
+    lw      $s2,        8($sp)          # push $s2
+
+    # EPILOGUE
+    move    $sp,         $fp            # restore $sp
+    lw      $ra,        ($fp)           # restore saved $ra
+    lw      $fp,      -4($sp)           # restore saved $fp
+    jr      $ra                         # return
+    
+
+
+strlen:
+
+    # PROLOGUE
+    subu    $sp,        $sp,        8   # expand stack by 8 bytes
+    sw      $ra,      8($sp)            # push $ra (ret addr, 4 bytes)
+    sw      $fp,      4($sp)            # push $fp (4 bytes)
+    addu    $fp,        $sp,        8   # set $fp to saved $ra
+
+    # save $s1 on stack before using it
+    subu    $sp,        $sp,        4   # expand stack by 8 bytes
+    sw      $s1,      4($sp)            # save $s1 on stack
+    
+    lw      $s1,       ($a0)            # use s1 for string[i]
+    li      $t0,        0               # use t0 to count how many character the string has
+    
+strlen_loop:
+
+    beqz    $s1,       strlen_end       # if string[i] == '\0' stop loop
+    addu    $s1,       $s1,         1   # i ++
+    add     $t0,       $t0,         1   # counter ++
+    j       strlen_loop
+    
+    
+strlen_end:
+
+    move    $v0,      $t0               #v0 = counter
+    
+    #restores the arg
+    lw      $s1,      4($sp)            # push $s1
+    
+    # EPILOGUE
+    move    $sp,        $fp             # restore $sp
+    lw      $ra,        ($fp)           # restore saved $ra
+    lw      $fp,        -4($sp)         # restore saved $fp
+    jr      $ra                         # return
